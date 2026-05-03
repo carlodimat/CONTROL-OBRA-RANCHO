@@ -15,7 +15,6 @@ def load_data():
         df = pd.read_csv("DIMAQUINAS_C.A._RANCHO_FLAMBOYANT.csv")
     
     df['FECHA'] = pd.to_datetime(df['FECHA'])
-    # Limpieza exhaustiva de columnas financieras
     cols_financieras = ['MONTO ORIG', 'TASA', 'MONTO BASE USD', 'MONTO PAGADO', 'HONORARIOS', 'COSTO TOTAL']
     for col in cols_financieras:
         df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
@@ -25,7 +24,7 @@ try:
     df = load_data()
     
     st.title('🏗️ Sistema de Control Integral: Rancho Flamboyant')
-    st.subheader('Gestión Multimoneda - DIMAQUINAS C.A.')
+    st.subheader('Gestión Multimoneda y Flujo Acumulado - DIMAQUINAS C.A.')
 
     # 3. Cálculos de métricas generales
     df_ingresos_solo = df[df['CLASE'] == 'INGRESO']
@@ -46,7 +45,7 @@ try:
 
     # 4. Organización por Pestañas
     tab_graficas, tab_ingresos, tab_egresos, tab_buscador = st.tabs([
-        "📊 Análisis de Egresos", 
+        "📊 Análisis Acumulado", 
         "💰 Listado de Ingresos", 
         "💸 Listado de Egresos", 
         "🔍 Buscador Universal"
@@ -54,11 +53,18 @@ try:
 
     with tab_graficas:
         frecuencia = st.radio("Ver evolución temporal:", ["Semanal", "Mensual"], horizontal=True)
-        freq_code = 'W' if frecuencia == "Semanal" else 'ME'
+        # Usamos M o W según la frecuencia seleccionada
+        freq_code = 'W' if frecuencia == "Semanal" else 'M'
         
+        st.write(f"### Evolución Acumulada del Flujo de Caja ({frecuencia})")
         df_flujo = df[df['CLASE'].isin(['INGRESO', 'GASTO'])].copy()
+        
+        # Agrupamos por tiempo y clase, luego calculamos el acumulado (cumsum)
         df_time = df_flujo.groupby([pd.Grouper(key='FECHA', freq=freq_code), 'CLASE'])['MONTO BASE USD'].sum().unstack().fillna(0)
-        st.area_chart(df_time)
+        df_acumulado = df_time.cumsum() # ESTO HACE QUE EL GRÁFICO SEA ACUMULATIVO
+        
+        st.area_chart(df_acumulado)
+        st.caption("Nota: El gráfico muestra cómo crece la inversión y el gasto total acumulado con el tiempo.")
 
         st.divider()
         col_1, col_2 = st.columns(2)
@@ -101,24 +107,14 @@ try:
 
     with tab_buscador:
         st.write("### 🔍 Buscador Universal")
-        texto_buscar = st.text_input("Escribe cualquier palabra para filtrar:")
-        
+        texto_buscar = st.text_input("Filtrar por cualquier palabra:")
         if texto_buscar:
             mask = df.apply(lambda row: row.astype(str).str.contains(texto_buscar, case=False, na=False).any(), axis=1)
             df_busqueda = df[mask].copy()
-            
-            # --- NUEVA MÉTRICA DE TOTAL PARA LA BÚSQUEDA ---
             suma_pagado = df_busqueda['MONTO PAGADO'].sum()
             st.success(f"**Total Monto Pagado en esta búsqueda:** ${suma_pagado:,.2f}")
-            
-            st.write(f"Se encontraron **{len(df_busqueda)}** registros.")
-            
-            # Formateamos la tabla incluyendo MONTO PAGADO correctamente
             st.dataframe(df_busqueda.style.format({
-                "MONTO BASE USD": "{:,.2f}",
-                "MONTO PAGADO": "{:,.2f}",
-                "MONTO ORIG": "{:,.2f}",
-                "TASA": "{:,.2f}"
+                "MONTO BASE USD": "{:,.2f}", "MONTO PAGADO": "{:,.2f}", "MONTO ORIG": "{:,.2f}", "TASA": "{:,.2f}"
             }), use_container_width=True)
 
 except Exception as e:
