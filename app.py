@@ -53,18 +53,17 @@ try:
 
     with tab_graficas:
         frecuencia = st.radio("Ver evolución temporal:", ["Semanal", "Mensual"], horizontal=True)
-        # Usamos M o W según la frecuencia seleccionada
-        freq_code = 'W' if frecuencia == "Semanal" else 'M'
+        # CORRECCIÓN DE FRECUENCIA: 'W' para semanal, 'ME' para mensual (Month End)
+        freq_code = 'W' if frecuencia == "Semanal" else 'ME'
         
         st.write(f"### Evolución Acumulada del Flujo de Caja ({frecuencia})")
         df_flujo = df[df['CLASE'].isin(['INGRESO', 'GASTO'])].copy()
         
         # Agrupamos por tiempo y clase, luego calculamos el acumulado (cumsum)
         df_time = df_flujo.groupby([pd.Grouper(key='FECHA', freq=freq_code), 'CLASE'])['MONTO BASE USD'].sum().unstack().fillna(0)
-        df_acumulado = df_time.cumsum() # ESTO HACE QUE EL GRÁFICO SEA ACUMULATIVO
+        df_acumulado = df_time.cumsum() 
         
         st.area_chart(df_acumulado)
-        st.caption("Nota: El gráfico muestra cómo crece la inversión y el gasto total acumulado con el tiempo.")
 
         st.divider()
         col_1, col_2 = st.columns(2)
@@ -118,4 +117,5 @@ try:
             }), use_container_width=True)
 
 except Exception as e:
-    st.error(f"Error: {e}")
+    st.error(f"Error técnico: {e}")
+    st.info("Sugerencia: Revisa que el archivo CSV no tenga filas vacías al final.")
