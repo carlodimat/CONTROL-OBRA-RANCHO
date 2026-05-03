@@ -56,7 +56,6 @@ try:
         frecuencia = st.radio("Ver evolución temporal:", ["Semanal", "Mensual"], horizontal=True)
         freq_code = 'W' if frecuencia == "Semanal" else 'ME'
         
-        st.write(f"### Evolución Acumulada del Flujo de Caja ({frecuencia})")
         df_flujo = df[df['CLASE'].isin(['INGRESO', 'GASTO'])].copy()
         df_time = df_flujo.groupby([pd.Grouper(key='FECHA', freq=freq_code), 'CLASE'])['MONTO BASE USD'].sum().unstack().fillna(0)
         df_acumulado = df_time.cumsum() 
@@ -77,7 +76,7 @@ try:
             df_area = df_gastos_solo.groupby('AREA')['MONTO BASE USD'].sum().sort_values()
             fig2, ax2 = plt.subplots()
             bars2 = ax2.barh(df_area.index, df_area.values, color='#ffcc99')
-            ax2.bar_label(bars2, labels=[f'${x:,.2f}' for x in df_area.values], padding=3, fontweight='bold', fontsize=9)
+            ax2.bar_label(bars2, padding=3, fontweight='bold', fontsize=9)
             st.pyplot(fig2)
 
         with col_2:
@@ -98,7 +97,6 @@ try:
 
     with tab_egresos:
         st.write("### Detalle Completo de Egresos")
-        # COLUMNAS SIMPLIFICADAS SEGÚN TU SOLICITUD
         listado_gas = df_gastos_solo[['FECHA', 'AREA', 'TIPO', 'PROVEEDOR', 'DESCRIPCION', 'FORMA DE PAGO', 'MONTO PAGADO']].sort_values('FECHA', ascending=False)
         st.dataframe(listado_gas.style.format({"MONTO PAGADO": "{:,.2f}"}), use_container_width=True)
 
@@ -106,13 +104,20 @@ try:
         st.write("### 🔍 Buscador Universal")
         texto_buscar = st.text_input("Filtrar por cualquier palabra:")
         if texto_buscar:
+            # Buscamos en todo el dataframe original para no perder datos
             mask = df.apply(lambda row: row.astype(str).str.contains(texto_buscar, case=False, na=False).any(), axis=1)
-            df_busqueda = df[mask].copy()
-            suma_pagado = df_busqueda['MONTO PAGADO'].sum()
+            df_busqueda_raw = df[mask].copy()
+            
+            # Mostramos la suma del monto pagado de lo encontrado
+            suma_pagado = df_busqueda_raw['MONTO PAGADO'].sum()
             st.success(f"**Total Monto Pagado en esta búsqueda:** ${suma_pagado:,.2f}")
-            st.dataframe(df_busqueda.style.format({
-                "MONTO BASE USD": "{:,.2f}", "MONTO PAGADO": "{:,.2f}", "MONTO ORIG": "{:,.2f}", "TASA": "{:,.2f}"
-            }), use_container_width=True)
+            
+            # FILTRAMOS LAS COLUMNAS AQUÍ TAMBIÉN PARA QUE SE VEA LIMPIO
+            columnas_visibles = ['FECHA', 'CLASE', 'AREA', 'TIPO', 'PROVEEDOR', 'DESCRIPCION', 'FORMA DE PAGO', 'MONTO PAGADO']
+            # Solo intentamos mostrar las columnas que existen en el resultado
+            cols_finales = [c for c in columnas_visibles if c in df_busqueda_raw.columns]
+            
+            st.dataframe(df_busqueda_raw[cols_finales].style.format({"MONTO PAGADO": "{:,.2f}"}), use_container_width=True)
 
 except Exception as e:
     st.error(f"Error: {e}")
