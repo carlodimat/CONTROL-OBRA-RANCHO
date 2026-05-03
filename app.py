@@ -3,71 +3,69 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Configuración de la página web
-st.set_page_config(page_title="Dashboard Palm Beach", layout="wide")
-st.title('📊 Dashboard: Palm Beach Plus Complementos y Servicios')
+# Configuración de la página
+st.set_page_config(page_title="Control de Obra - Rancho Flamboyant", layout="wide")
+st.title('🏗️ Control de Obra: Rancho Flamboyant')
+st.subheader('DIMAQUINAS C.A.')
 
-# Función para cargar y limpiar datos (el caché ayuda a que cargue más rápido en internet)
+# Función para cargar datos
 @st.cache_data
 def load_data():
-    df = pd.read_excel("PALM BEACH PLUS COMPLE.xlsx", skiprows=5)
+    # Cargamos el CSV (Streamlit lo buscará en tu repositorio de GitHub)
+    df = pd.read_csv("DIMAQUINAS_C.A._RANCHO_FLAMBOYANT.csv")
     
-    total_idx = df[df['Service Date'] == 'Total'].index
-    if len(total_idx) > 0:
-        df = df.loc[:total_idx[0]-1]
-
-    df['Service Date'] = df['Service Date'].ffill()
-    df = df[~df['Item Category'].astype(str).str.contains('Sub subtotal')]
-    df = df[~df['Transaction Type'].astype(str).str.contains('Subtotal')]
-    df = df.dropna(subset=['Item Category'])
-
-    df['Service Date'] = pd.to_datetime(df['Service Date'])
-    df['Quantity - sum'] = pd.to_numeric(df['Quantity - sum'], errors='coerce')
-    df['Debits - sum'] = pd.to_numeric(df['Debits - sum'], errors='coerce')
-    df['Item Category'] = df['Item Category'].str.strip()
+    # Convertimos la fecha a formato datetime
+    df['FECHA'] = pd.to_datetime(df['FECHA'])
+    
+    # Aseguramos que los montos sean numéricos
+    cols_num = ['MONTO BASE USD', 'MONTO PAGADO', 'SALDO PENDIENTE', 'COSTO TOTAL']
+    for col in cols_num:
+        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+    
     return df
 
 df = load_data()
 
-# Mostrar un pequeño resumen numérico en la web
-col1, col2 = st.columns(2)
-col1.metric("Ingresos Totales", f"${df['Debits - sum'].sum():,.2f}")
-col2.metric("Total Artículos Vendidos", f"{df['Quantity - sum'].sum():,.0f}")
+# --- MÉTRICAS PRINCIPALES ---
+ingresos = df[df['CLASE'] == 'INGRESO']['MONTO BASE USD'].sum()
+egresos = df[df['CLASE'] == 'EGRESO']['MONTO BASE USD'].sum()
+balance = ingresos - egresos
 
-# Crear las gráficas
-fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+m1, m2, m3 = st.columns(3)
+m1.metric("Total Ingresos (USD)", f"${ingresos:,.2f}")
+m2.metric("Total Egresos (USD)", f"${egresos:,.2f}")
+m3.metric("Balance en Caja", f"${balance:,.2f}", delta_color="normal")
 
-# Gráfica 1
-df_time = df.groupby(df['Service Date'].dt.to_period('M'))['Debits - sum'].sum().reset_index()
-df_time['Service Date'] = df_time['Service Date'].astype(str)
-axes[0, 0].plot(df_time['Service Date'], df_time['Debits - sum'], marker='o', color='b', linewidth=2)
-axes[0, 0].set_title('Ingresos Totales por Mes')
-axes[0, 0].set_xlabel('Mes')
-axes[0, 0].set_ylabel('Ingresos (Debits)')
-axes[0, 0].tick_params(axis='x', rotation=45)
-axes[0, 0].grid(True, linestyle='--', alpha=0.7)
+st.divider()
 
-# Gráfica 2
-df_cat_rev = df.groupby('Item Category')['Debits - sum'].sum().sort_values(ascending=False).head(10)
-sns.barplot(x=df_cat_rev.values, y=df_cat_rev.index, ax=axes[0, 1], palette='viridis')
-axes[0, 1].set_title('Top 10 Categorías por Ingresos')
+# --- GRÁFICAS ---
+col_left, col_right = st.columns(2)
 
-# Gráfica 3
-df_cat_qty = df.groupby('Item Category')['Quantity - sum'].sum().sort_values(ascending=False).head(10)
-sns.barplot(x=df_cat_qty.values, y=df_cat_qty.index, ax=axes[1, 0], palette='magma')
-axes[1, 0].set_title('Top 10 Categorías por Cantidad Vendida')
+with col_left:
+    # 1. Gastos por Categoría (TIPO)
+    st.write("### Distribución de Egresos por Tipo")
+    df_egresos = df[df['CLASE'] == 'EGRESO']
+    fig1, ax1 = plt.subplots()
+    df_tipo = df_egresos.groupby('TIPO')['MONTO BASE USD'].sum().sort_values()
+    df_tipo.plot(kind='barh', color='salmon', ax=ax1)
+    ax1.set_xlabel("Monto USD")
+    ax1.set_ylabel("")
+    st.pyplot(fig1)
 
-# Gráfica 4
-last_date = df['Service Date'].max()
-thirty_days_ago = last_date - pd.Timedelta(days=30)
-df_last_30 = df[df['Service Date'] >= thirty_days_ago]
-df_daily = df_last_30.groupby('Service Date')['Debits - sum'].sum().reset_index()
-axes[1, 1].plot(df_daily['Service Date'], df_daily['Debits - sum'], marker='x', color='g', linewidth=1.5)
-axes[1, 1].set_title('Tendencia de Ingresos Diarios (Últimos 30 días)')
-axes[1, 1].tick_params(axis='x', rotation=45)
-axes[1, 1].grid(True, linestyle='--', alpha=0.7)
+with col_right:
+    # 2. Top Proveedores
+    st.write("### Top 10 Proveedores (por Monto)")
+    fig2, ax2 = plt.subplots()
+    df_prov = df_egresos.groupby('PROVEEDOR')['MONTO BASE USD'].sum().sort_values(ascending=False).head(10)
+    sns.barplot(x=df_prov.values, y=df_prov.index, palette='Blues_d', ax=ax2)
+    ax2.set_xlabel("Monto Pagado USD")
+    st.pyplot(fig2)
 
-plt.tight_layout()
+# --- FLUJO DE CAJA ---
+st.write("### Histórico de Movimientos (Ingresos vs Egresos)")
+df_time = df.groupby(['MES', 'CLASE'])['MONTO BASE USD'].sum().unstack().fillna(0)
+st.line_chart(df_time)
 
-# Enviar la gráfica a Streamlit
-st.pyplot(fig)
+# --- TABLA DE DATOS ---
+if st.checkbox('Ver tabla de datos detallada'):
+    st.write(df)
