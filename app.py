@@ -15,6 +15,7 @@ def load_data():
         df = pd.read_csv("DIMAQUINAS_C.A._RANCHO_FLAMBOYANT.csv")
     
     df['FECHA'] = pd.to_datetime(df['FECHA'])
+    # Limpieza exhaustiva de columnas financieras
     cols_financieras = ['MONTO ORIG', 'TASA', 'MONTO BASE USD', 'MONTO PAGADO', 'HONORARIOS', 'COSTO TOTAL']
     for col in cols_financieras:
         df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
@@ -26,7 +27,7 @@ try:
     st.title('🏗️ Sistema de Control Integral: Rancho Flamboyant')
     st.subheader('Gestión Multimoneda - DIMAQUINAS C.A.')
 
-    # 3. Cálculos de métricas
+    # 3. Cálculos de métricas generales
     df_ingresos_solo = df[df['CLASE'] == 'INGRESO']
     df_gastos_solo = df[df['CLASE'] == 'GASTO']
     
@@ -63,46 +64,34 @@ try:
         col_1, col_2 = st.columns(2)
         
         with col_1:
-            # Gráfica TIPO
             st.write("#### Egresos por Tipo de Partida")
             df_tipo = df_gastos_solo.groupby('TIPO')['MONTO BASE USD'].sum().sort_values()
             fig1, ax1 = plt.subplots()
             bars1 = ax1.barh(df_tipo.index, df_tipo.values, color='#ff9999')
-            # CORRECCIÓN DE ETIQUETAS:
             ax1.bar_label(bars1, labels=[f'${x:,.2f}' for x in df_tipo.values], padding=3, fontweight='bold', fontsize=9)
-            ax1.set_xlabel("Monto USD")
             st.pyplot(fig1)
 
-            # Gráfica ÁREA
             st.write("#### Egresos por Área de la Obra")
             df_area = df_gastos_solo.groupby('AREA')['MONTO BASE USD'].sum().sort_values()
             fig2, ax2 = plt.subplots()
             bars2 = ax2.barh(df_area.index, df_area.values, color='#ffcc99')
-            # CORRECCIÓN DE ETIQUETAS:
             ax2.bar_label(bars2, labels=[f'${x:,.2f}' for x in df_area.values], padding=3, fontweight='bold', fontsize=9)
-            ax2.set_xlabel("Monto USD")
             st.pyplot(fig2)
 
         with col_2:
-            # Gráfica PROVEEDOR
             st.write("#### Top Proveedores por Monto")
             df_prov = df_gastos_solo.groupby('PROVEEDOR')['MONTO BASE USD'].sum().sort_values(ascending=False).head(15)
             fig3, ax3 = plt.subplots(figsize=(10, 11))
-            # Invertimos para que el mayor esté arriba
             df_prov_plot = df_prov.sort_values(ascending=True)
             bars3 = ax3.barh(df_prov_plot.index, df_prov_plot.values, color='#d3d3d3')
-            # CORRECCIÓN DE ETIQUETAS:
             ax3.bar_label(bars3, labels=[f'${x:,.2f}' for x in df_prov_plot.values], padding=3, fontweight='bold', fontsize=9)
-            ax3.set_xlabel("Monto USD")
             st.pyplot(fig3)
 
     with tab_ingresos:
         st.write("### Detalle de Ingresos (Bs / $)")
         listado_ing = df_ingresos_solo[['FECHA', 'PROVEEDOR', 'MONTO ORIG', 'TASA', 'MONTO BASE USD', 'FORMA DE PAGO']].sort_values('FECHA', ascending=False)
         st.dataframe(listado_ing.style.format({
-            "MONTO ORIG": "{:,.2f}",
-            "TASA": "{:,.2f}",
-            "MONTO BASE USD": "{:,.2f}"
+            "MONTO ORIG": "{:,.2f}", "TASA": "{:,.2f}", "MONTO BASE USD": "{:,.2f}"
         }), use_container_width=True)
 
     with tab_egresos:
@@ -112,12 +101,22 @@ try:
 
     with tab_buscador:
         st.write("### 🔍 Buscador Universal")
-        texto_buscar = st.text_input("Escribe cualquier palabra:")
+        texto_buscar = st.text_input("Escribe cualquier palabra para filtrar:")
+        
         if texto_buscar:
             mask = df.apply(lambda row: row.astype(str).str.contains(texto_buscar, case=False, na=False).any(), axis=1)
-            df_busqueda = df[mask]
+            df_busqueda = df[mask].copy()
+            
+            # --- NUEVA MÉTRICA DE TOTAL PARA LA BÚSQUEDA ---
+            suma_pagado = df_busqueda['MONTO PAGADO'].sum()
+            st.success(f"**Total Monto Pagado en esta búsqueda:** ${suma_pagado:,.2f}")
+            
+            st.write(f"Se encontraron **{len(df_busqueda)}** registros.")
+            
+            # Formateamos la tabla incluyendo MONTO PAGADO correctamente
             st.dataframe(df_busqueda.style.format({
                 "MONTO BASE USD": "{:,.2f}",
+                "MONTO PAGADO": "{:,.2f}",
                 "MONTO ORIG": "{:,.2f}",
                 "TASA": "{:,.2f}"
             }), use_container_width=True)
