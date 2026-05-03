@@ -3,68 +3,88 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-st.set_page_config(page_title="Control de Obra - Rancho Flamboyant", layout="wide")
-st.title('🏗️ Control de Obra: Rancho Flamboyant')
-st.subheader('DIMAQUINAS C.A.')
+st.set_page_config(page_title="Control de Obra PRO", layout="wide")
 
 @st.cache_data
 def load_data():
-    # Asegúrate de que este nombre sea exacto al que tienes en GitHub
+    # Usamos el nombre que me confirmaste
     df = pd.read_csv("RANCHO.csv")
     df['FECHA'] = pd.to_datetime(df['FECHA'])
-    cols_num = ['MONTO BASE USD', 'MONTO PAGADO', 'SALDO PENDIENTE', 'COSTO TOTAL']
-    for col in cols_num:
+    # Asegurar limpieza de montos
+    for col in ['MONTO BASE USD', 'MONTO PAGADO', 'COSTO TOTAL']:
         df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
     return df
 
-df = load_data()
+try:
+    df = load_data()
+    
+    st.title('🏗️ Sistema de Control: Rancho Flamboyant')
+    
+    # --- BARRA LATERAL (FILTROS Y BÚSQUEDA) ---
+    st.sidebar.header("🔍 Panel de Control")
+    
+    # 1. Buscador de palabras
+    search_query = st.sidebar.text_input("Buscar en Descripción o Proveedor", "")
+    
+    # 2. Selector de Tiempo
+    vista_tiempo = st.sidebar.radio("Ver historial por:", ["Mensual", "Semanal"])
+    
+    # 3. Filtro de Clase
+    clases_disponibles = df['CLASE'].unique()
+    clases_seleccionadas = st.sidebar.multiselect("Filtrar por Clase:", clases_disponibles, default=['INGRESO', 'GASTO'])
 
-# --- FILTROS DE DATOS ---
-# Usamos "GASTO" porque así viene en tu CSV
-df_gastos = df[df['CLASE'] == 'GASTO']
-df_ingresos = df[df['CLASE'] == 'INGRESO']
+    # Aplicar filtros al DF
+    mask = df['CLASE'].isin(clases_seleccionadas)
+    if search_query:
+        mask = mask & (df['DESCRIPCION'].str.contains(search_query, case=False, na=False) | 
+                       df['PROVEEDOR'].str.contains(search_query, case=False, na=False))
+    
+    df_filtrado = df[mask]
 
-# --- MÉTRICAS ---
-total_ingresos = df_ingresos['MONTO BASE USD'].sum()
-total_gastos = df_gastos['MONTO BASE USD'].sum()
-balance = total_ingresos - total_gastos
+    # --- MÉTRICAS ---
+    ing = df[df['CLASE'] == 'INGRESO']['MONTO BASE USD'].sum()
+    gas = df[df['CLASE'] == 'GASTO']['MONTO BASE USD'].sum()
+    
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Total Ingresos", f"${ing:,.2f}")
+    m2.metric("Total Gastos", f"${gas:,.2f}")
+    m3.metric("Disponible", f"${ing - gas:,.2f}")
 
-m1, m2, m3 = st.columns(3)
-m1.metric("Total Ingresos", f"${total_ingresos:,.2f}")
-m2.metric("Total Gastos Realizados", f"${total_gastos:,.2f}")
-m3.metric("Saldo en Caja", f"${balance:,.2f}")
+    st.divider()
 
-st.divider()
+    # --- GRÁFICA TEMPORAL (SEMANAL O MENSUAL) ---
+    st.subheader(f"📈 Evolución de Flujo de Caja ({vista_tiempo})")
+    periodo = 'ME' if vista_tiempo == "Mensual" else 'W'
+    df_time = df[df['CLASE'].isin(['INGRESO', 'GASTO'])].copy()
+    df_time_grouped = df_time.groupby([pd.Grouper(key='FECHA', freq=periodo), 'CLASE'])['MONTO BASE USD'].sum().unstack().fillna(0)
+    
+    st.area_chart(df_time_grouped)
 
-# --- GRÁFICAS ---
-col_left, col_right = st.columns(2)
+    # --- ANÁLISIS DE INGRESOS Y GASTOS ---
+    c1, c2 = st.columns(2)
+    
+    with c1:
+        st.write("### 📥 Detalle de Ingresos")
+        df_ing_det = df[df['CLASE'] == 'INGRESO'].groupby('PROVEEDOR')['MONTO BASE USD'].sum().sort_values(ascending=False)
+        if not df_ing_det.empty:
+            fig_ing, ax_ing = plt.subplots()
+            df_ing_det.plot(kind='pie', autopct='%1.1f%%', ax=ax_ing, cmap='Greens')
+            ax_ing.set_ylabel("")
+            st.pyplot(fig_ing)
+        else:
+            st.info("No hay ingresos para mostrar.")
 
-with col_left:
-    st.write("### Gastos por Tipo de Partida")
-    if not df_gastos.empty:
-        fig1, ax1 = plt.subplots(figsize=(10, 6))
-        # Agrupamos por TIPO para ver en qué se va el dinero (Permisología, Equipos, etc.)
-        df_tipo = df_gastos.groupby('TIPO')['MONTO BASE USD'].sum().sort_values()
-        df_tipo.plot(kind='barh', color='skyblue', ax=ax1)
-        ax1.set_xlabel("Monto USD")
-        ax1.set_ylabel("")
-        st.pyplot(fig1)
+    with c2:
+        st.write("### 📤 Gastos por Partida")
+        df_gas_det = df_filtrado[df_filtrado['CLASE'] == 'GASTO'].groupby('TIPO')['MONTO BASE USD'].sum().sort_values()
+        if not df_gas_det.empty:
+            fig_gas, ax_gas = plt.subplots()
+            df_gas_det.plot(kind='barh', color='orange', ax=ax_gas)
+            st.pyplot(fig_gas)
 
-with col_right:
-    st.write("### Top 10 Proveedores")
-    if not df_gastos.empty:
-        fig2, ax2 = plt.subplots(figsize=(10, 6))
-        df_prov = df_gastos.groupby('PROVEEDOR')['MONTO BASE USD'].sum().sort_values(ascending=False).head(10)
-        sns.barplot(x=df_prov.values, y=df_prov.index, palette='magma', ax=ax2)
-        ax2.set_xlabel("Monto USD")
-        st.pyplot(fig2)
+    # --- BUSCADOR DE DATOS ---
+    st.write("### 📋 Listado de Movimientos")
+    st.dataframe(df_filtrado[['FECHA', 'CLASE', 'PROVEEDOR', 'DESCRIPCION', 'MONTO BASE USD']], use_container_width=True)
 
-# --- ANÁLISIS POR MES ---
-st.write("### Flujo Mensual (Ingresos vs Gastos)")
-# Filtramos solo ingresos y gastos para la gráfica de tiempo
-df_flujo = df[df['CLASE'].isin(['INGRESO', 'GASTO'])]
-df_mes = df_flujo.groupby(['MES', 'CLASE'])['MONTO BASE USD'].sum().unstack().fillna(0)
-st.area_chart(df_mes)
-
-if st.checkbox('Ver listado completo de gastos'):
-    st.dataframe(df_gastos[['FECHA', 'TIPO', 'PROVEEDOR', 'DESCRIPCION', 'MONTO BASE USD']])
+except Exception as e:
+    st.error(f"Error de configuración: {e}")
