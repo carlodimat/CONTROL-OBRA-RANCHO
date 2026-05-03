@@ -15,6 +15,7 @@ def load_data():
         df = pd.read_csv("DIMAQUINAS_C.A._RANCHO_FLAMBOYANT.csv")
     
     df['FECHA'] = pd.to_datetime(df['FECHA'])
+    # Limpieza exhaustiva de columnas financieras
     cols_financieras = ['MONTO ORIG', 'TASA', 'MONTO BASE USD', 'MONTO PAGADO', 'HONORARIOS', 'COSTO TOTAL']
     for col in cols_financieras:
         df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
@@ -24,7 +25,7 @@ try:
     df = load_data()
     
     st.title('🏗️ Sistema de Control Integral: Rancho Flamboyant')
-    st.subheader('Gestión Multimoneda y Flujo Acumulado - DIMAQUINAS C.A.')
+    st.subheader('Gestión de DIMAQUINAS C.A.')
 
     # 3. Cálculos de métricas generales
     df_ingresos_solo = df[df['CLASE'] == 'INGRESO']
@@ -53,16 +54,12 @@ try:
 
     with tab_graficas:
         frecuencia = st.radio("Ver evolución temporal:", ["Semanal", "Mensual"], horizontal=True)
-        # CORRECCIÓN DE FRECUENCIA: 'W' para semanal, 'ME' para mensual (Month End)
         freq_code = 'W' if frecuencia == "Semanal" else 'ME'
         
         st.write(f"### Evolución Acumulada del Flujo de Caja ({frecuencia})")
         df_flujo = df[df['CLASE'].isin(['INGRESO', 'GASTO'])].copy()
-        
-        # Agrupamos por tiempo y clase, luego calculamos el acumulado (cumsum)
         df_time = df_flujo.groupby([pd.Grouper(key='FECHA', freq=freq_code), 'CLASE'])['MONTO BASE USD'].sum().unstack().fillna(0)
         df_acumulado = df_time.cumsum() 
-        
         st.area_chart(df_acumulado)
 
         st.divider()
@@ -93,7 +90,7 @@ try:
             st.pyplot(fig3)
 
     with tab_ingresos:
-        st.write("### Detalle de Ingresos (Bs / $)")
+        st.write("### Detalle de Ingresos (Abonos)")
         listado_ing = df_ingresos_solo[['FECHA', 'PROVEEDOR', 'MONTO ORIG', 'TASA', 'MONTO BASE USD', 'FORMA DE PAGO']].sort_values('FECHA', ascending=False)
         st.dataframe(listado_ing.style.format({
             "MONTO ORIG": "{:,.2f}", "TASA": "{:,.2f}", "MONTO BASE USD": "{:,.2f}"
@@ -101,8 +98,9 @@ try:
 
     with tab_egresos:
         st.write("### Detalle Completo de Egresos")
-        listado_gas = df_gastos_solo[['FECHA', 'AREA', 'TIPO', 'PROVEEDOR', 'DESCRIPCION', 'FORMA DE PAGO', 'MONTO BASE USD']].sort_values('FECHA', ascending=False)
-        st.dataframe(listado_gas.style.format({"MONTO BASE USD": "{:,.2f}"}), use_container_width=True)
+        # COLUMNAS SIMPLIFICADAS SEGÚN TU SOLICITUD
+        listado_gas = df_gastos_solo[['FECHA', 'AREA', 'TIPO', 'PROVEEDOR', 'DESCRIPCION', 'FORMA DE PAGO', 'MONTO PAGADO']].sort_values('FECHA', ascending=False)
+        st.dataframe(listado_gas.style.format({"MONTO PAGADO": "{:,.2f}"}), use_container_width=True)
 
     with tab_buscador:
         st.write("### 🔍 Buscador Universal")
@@ -117,5 +115,4 @@ try:
             }), use_container_width=True)
 
 except Exception as e:
-    st.error(f"Error técnico: {e}")
-    st.info("Sugerencia: Revisa que el archivo CSV no tenga filas vacías al final.")
+    st.error(f"Error: {e}")
