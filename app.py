@@ -52,6 +52,7 @@ try:
         frecuencia = st.radio("Ver evolución temporal:", ["Semanal", "Mensual"], horizontal=True)
         freq_code = 'W' if frecuencia == "Semanal" else 'ME'
         
+        st.write(f"### Evolución Acumulada del Flujo de Caja ({frecuencia})")
         df_flujo = df[df['CLASE'].isin(['INGRESO', 'GASTO'])].copy()
         df_time = df_flujo.groupby([pd.Grouper(key='FECHA', freq=freq_code), 'CLASE'])['MONTO BASE USD'].sum().unstack().fillna(0)
         df_acumulado = df_time.cumsum() 
@@ -66,9 +67,12 @@ try:
             df_tipo = df_gastos_solo.groupby('TIPO')['MONTO BASE USD'].sum().sort_values()
             fig1, ax1 = plt.subplots()
             bars1 = ax1.barh(df_tipo.index, df_tipo.values, color='#ff9999')
-            # CORRECCIÓN FINAL: Usamos solo padding negativo para meter el texto
-            ax1.bar_label(bars1, labels=[f'${x:,.2f} ' for x in df_tipo.values], padding=-40, fontweight='bold', fontsize=9, color='black')
-            ax1.set_xlabel("Monto USD")
+            # ANOTACIÓN MANUAL
+            for bar in bars1:
+                w = bar.get_width()
+                if w > 0:
+                    ax1.text(w, bar.get_y() + bar.get_height()/2, f' ${w:,.2f}', 
+                            va='center', ha='right', fontweight='bold', fontsize=9, color='black')
             st.pyplot(fig1)
 
             # Gráfica ÁREA
@@ -76,8 +80,11 @@ try:
             df_area = df_gastos_solo.groupby('AREA')['MONTO BASE USD'].sum().sort_values()
             fig2, ax2 = plt.subplots()
             bars2 = ax2.barh(df_area.index, df_area.values, color='#ffcc99')
-            ax2.bar_label(bars2, labels=[f'${x:,.2f} ' for x in df_area.values], padding=-40, fontweight='bold', fontsize=9, color='black')
-            ax2.set_xlabel("Monto USD")
+            for bar in bars2:
+                w = bar.get_width()
+                if w > 0:
+                    ax2.text(w, bar.get_y() + bar.get_height()/2, f' ${w:,.2f}', 
+                            va='center', ha='right', fontweight='bold', fontsize=9, color='black')
             st.pyplot(fig2)
 
         with col_2:
@@ -87,8 +94,11 @@ try:
             fig3, ax3 = plt.subplots(figsize=(10, 11))
             df_prov_plot = df_prov.sort_values(ascending=True)
             bars3 = ax3.barh(df_prov_plot.index, df_prov_plot.values, color='#d3d3d3')
-            ax3.bar_label(bars3, labels=[f'${x:,.2f} ' for x in df_prov_plot.values], padding=-40, fontweight='bold', fontsize=9, color='black')
-            ax3.set_xlabel("Monto USD")
+            for bar in bars3:
+                w = bar.get_width()
+                if w > 0:
+                    ax3.text(w, bar.get_y() + bar.get_height()/2, f' ${w:,.2f}', 
+                            va='center', ha='right', fontweight='bold', fontsize=9, color='black')
             st.pyplot(fig3)
 
     with tab_ingresos:
