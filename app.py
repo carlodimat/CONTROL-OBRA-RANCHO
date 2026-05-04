@@ -64,33 +64,33 @@ try:
         col_1, col_2 = st.columns(2)
         
         with col_1:
-            # Gráfica TIPO con etiquetas internas
+            # Gráfica TIPO - Ajustada al borde interno
             st.write("#### Egresos por Tipo de Partida")
             df_tipo = df_gastos_solo.groupby('TIPO')['MONTO BASE USD'].sum().sort_values()
             fig1, ax1 = plt.subplots()
             bars1 = ax1.barh(df_tipo.index, df_tipo.values, color='#ff9999')
-            # label_type='center' coloca el monto DENTRO de la barra
-            ax1.bar_label(bars1, labels=[f'${x:,.2f}' for x in df_tipo.values], label_type='center', fontweight='bold', fontsize=9, color='black')
+            # label_type='edge' y padding negativo para que entre en la barra sin tocar el texto
+            ax1.bar_label(bars1, labels=[f'${x:,.2f}' for x in df_tipo.values], padding=-5, label_type='edge', fontweight='bold', fontsize=9, color='black', textAlign='right')
             ax1.set_xlabel("Monto USD")
             st.pyplot(fig1)
 
-            # Gráfica ÁREA con etiquetas internas
+            # Gráfica ÁREA - Ajustada al borde interno
             st.write("#### Egresos por Área de la Obra")
             df_area = df_gastos_solo.groupby('AREA')['MONTO BASE USD'].sum().sort_values()
             fig2, ax2 = plt.subplots()
             bars2 = ax2.barh(df_area.index, df_area.values, color='#ffcc99')
-            ax2.bar_label(bars2, labels=[f'${x:,.2f}' for x in df_area.values], label_type='center', fontweight='bold', fontsize=9, color='black')
+            ax2.bar_label(bars2, labels=[f'${x:,.2f}' for x in df_area.values], padding=-5, label_type='edge', fontweight='bold', fontsize=9, color='black', textAlign='right')
             ax2.set_xlabel("Monto USD")
             st.pyplot(fig2)
 
         with col_2:
-            # Gráfica PROVEEDOR con etiquetas internas
+            # Gráfica PROVEEDOR - Ajustada al borde interno
             st.write("#### Top Proveedores por Monto")
             df_prov = df_gastos_solo.groupby('PROVEEDOR')['MONTO BASE USD'].sum().sort_values(ascending=False).head(15)
             fig3, ax3 = plt.subplots(figsize=(10, 11))
             df_prov_plot = df_prov.sort_values(ascending=True)
             bars3 = ax3.barh(df_prov_plot.index, df_prov_plot.values, color='#d3d3d3')
-            ax3.bar_label(bars3, labels=[f'${x:,.2f}' for x in df_prov_plot.values], label_type='center', fontweight='bold', fontsize=9, color='black')
+            ax3.bar_label(bars3, labels=[f'${x:,.2f}' for x in df_prov_plot.values], padding=-5, label_type='edge', fontweight='bold', fontsize=9, color='black', textAlign='right')
             ax3.set_xlabel("Monto USD")
             st.pyplot(fig3)
 
