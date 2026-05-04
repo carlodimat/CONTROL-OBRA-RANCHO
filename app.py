@@ -45,14 +45,13 @@ try:
 
     # 4. Pestañas
     tab_graficas, tab_ingresos, tab_egresos, tab_buscador = st.tabs([
-        "📊 Análisis Acumulado", "💰 Ingresos", "💸 Egresos", "🔍 Buscador"
+        "📊 Análisis Visual", "💰 Ingresos", "💸 Egresos", "🔍 Buscador"
     ])
 
     with tab_graficas:
         frecuencia = st.radio("Ver evolución temporal:", ["Semanal", "Mensual"], horizontal=True)
         freq_code = 'W' if frecuencia == "Semanal" else 'ME'
         
-        st.write(f"### Evolución Acumulada del Flujo de Caja ({frecuencia})")
         df_flujo = df[df['CLASE'].isin(['INGRESO', 'GASTO'])].copy()
         df_time = df_flujo.groupby([pd.Grouper(key='FECHA', freq=freq_code), 'CLASE'])['MONTO BASE USD'].sum().unstack().fillna(0)
         df_acumulado = df_time.cumsum() 
@@ -61,44 +60,39 @@ try:
         st.divider()
         col_1, col_2 = st.columns(2)
         
+        # Función para aplicar colores variados y etiquetas al final
+        def plot_colorful_bar(data, ax):
+            # Paleta de colores variada
+            colors = sns.color_palette("husl", len(data))
+            bars = ax.barh(data.index, data.values, color=colors)
+            # Etiquetas al final de la barra
+            for bar in bars:
+                w = bar.get_width()
+                if w > 0:
+                    ax.text(w, bar.get_y() + bar.get_height()/2, f' ${w:,.2f}', 
+                            va='center', ha='left', fontweight='bold', fontsize=9)
+            # Expandir el eje X para que quepan las etiquetas
+            ax.set_xlim(0, data.max() * 1.2)
+
         with col_1:
-            # Gráfica TIPO
             st.write("#### Egresos por Tipo de Partida")
             df_tipo = df_gastos_solo.groupby('TIPO')['MONTO BASE USD'].sum().sort_values()
             fig1, ax1 = plt.subplots()
-            bars1 = ax1.barh(df_tipo.index, df_tipo.values, color='#ff9999')
-            # ANOTACIÓN MANUAL
-            for bar in bars1:
-                w = bar.get_width()
-                if w > 0:
-                    ax1.text(w, bar.get_y() + bar.get_height()/2, f' ${w:,.2f}', 
-                            va='center', ha='right', fontweight='bold', fontsize=9, color='black')
+            plot_colorful_bar(df_tipo, ax1)
             st.pyplot(fig1)
 
-            # Gráfica ÁREA
             st.write("#### Egresos por Área de la Obra")
             df_area = df_gastos_solo.groupby('AREA')['MONTO BASE USD'].sum().sort_values()
             fig2, ax2 = plt.subplots()
-            bars2 = ax2.barh(df_area.index, df_area.values, color='#ffcc99')
-            for bar in bars2:
-                w = bar.get_width()
-                if w > 0:
-                    ax2.text(w, bar.get_y() + bar.get_height()/2, f' ${w:,.2f}', 
-                            va='center', ha='right', fontweight='bold', fontsize=9, color='black')
+            plot_colorful_bar(df_area, ax2)
             st.pyplot(fig2)
 
         with col_2:
-            # Gráfica PROVEEDOR
             st.write("#### Top Proveedores por Monto")
             df_prov = df_gastos_solo.groupby('PROVEEDOR')['MONTO BASE USD'].sum().sort_values(ascending=False).head(15)
             fig3, ax3 = plt.subplots(figsize=(10, 11))
             df_prov_plot = df_prov.sort_values(ascending=True)
-            bars3 = ax3.barh(df_prov_plot.index, df_prov_plot.values, color='#d3d3d3')
-            for bar in bars3:
-                w = bar.get_width()
-                if w > 0:
-                    ax3.text(w, bar.get_y() + bar.get_height()/2, f' ${w:,.2f}', 
-                            va='center', ha='right', fontweight='bold', fontsize=9, color='black')
+            plot_colorful_bar(df_prov_plot, ax3)
             st.pyplot(fig3)
 
     with tab_ingresos:
