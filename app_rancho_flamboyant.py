@@ -44,8 +44,8 @@ def wrap_label(text, width=18):
         lines.append(" ".join(current))
     return "<br>".join(lines)
 
-@st.cache_data
 def load_all_data():
+
     csv_options = [
         "RANCHO.csv",
         "DIMAQUINAS C.A._RANCHO FLAMBOYANT (3).csv",
