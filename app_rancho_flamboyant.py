@@ -358,7 +358,16 @@ if df is not None:
                     f"🔍 **{len(res)}** registro{'s' if len(res) != 1 else ''} encontrado{'s' if len(res) != 1 else ''} "
                     f"que contiene '{q}' en DESCRIPCION | Total: **$ {res['MONTO BASE USD'].sum():,.2f}**"
                 )
-                fmt_res = {c: "${:,.2f}" for c in ['MONTO BASE USD', 'COSTO TOTAL', 'HONORARIOS'] if c in res.columns}
-                fmt_res.update({c: "{:,.2f}" for c in ['MONTO ORIG', 'TASA'] if c in res.columns})
-                st.dataframe(res.style.format(fmt_res), use_container_width=True)
+                
+                # Columnas seleccionadas
+                cols_buscador = [c for c in ['FECHA', 'TIPO', 'AREA', 'PROVEEDOR', 'DESCRIPCION', 'MONTO ORIG', '% ADMIN', 'HONORARIOS'] if c in res.columns]
+                
+                fmt_res = {c: "${:,.2f}" for c in ['HONORARIOS', 'MONTO BASE USD'] if c in res.columns}
+                fmt_res.update({c: "{:,.2f}" for c in ['MONTO ORIG', '% ADMIN'] if c in res.columns})
+                
+                st.dataframe(
+                    res[cols_buscador].sort_values('FECHA', ascending=False).style.format(fmt_res), 
+                    use_container_width=True
+                )
+
 
