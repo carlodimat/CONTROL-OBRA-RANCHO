@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-# 1. CONFIGURACIÓN DE PÁGINA
+# 1. CONFIGURACION DE PAGINA
 st.set_page_config(page_title="DIMAQUINAS C.A. - RANCHO FLAMBOYANT", layout="wide", page_icon="🏗️")
 
 # 2. DISEÑO CSS
@@ -26,9 +26,9 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# ─── Función para envolver texto en ejes ───
+# Funcion para envolver texto en ejes
 def wrap_label(text, width=18):
-    """Divide etiquetas largas en múltiples líneas para los ejes de Plotly."""
+    """Divide etiquetas largas en multiples lineas para los ejes de Plotly."""
     if not isinstance(text, str):
         return str(text)
     words = text.split()
@@ -46,7 +46,6 @@ def wrap_label(text, width=18):
 
 @st.cache_data
 def load_all_data():
-    # Intentar los nombres de CSV conocidos para Rancho Flamboyant
     csv_options = [
         "RANCHO.csv",
         "DIMAQUINAS C.A._RANCHO FLAMBOYANT (3).csv",
@@ -66,7 +65,7 @@ def load_all_data():
         except Exception as e:
             st.error(f"Error cargando {csv_name}: {e}")
             return None
-    st.error("❌ No se encontró ningún CSV de Rancho Flamboyant. Verifica que el archivo esté en el repositorio.")
+    st.error("No se encontro ningun CSV de Rancho Flamboyant. Verifica que el archivo este en el repositorio.")
     return None
 
 df = load_all_data()
@@ -83,7 +82,7 @@ if df is not None:
     # --- BARRA LATERAL DE FILTROS ---
     st.sidebar.header("🎯 FILTROS DE OBRA")
     tipos_sel = st.sidebar.multiselect("Filtrar por TIPO:",      options=sorted(df_gastos_base['TIPO'].unique()))
-    areas_sel = st.sidebar.multiselect("Filtrar por ÁREA:",      options=sorted(df_gastos_base['AREA'].unique()))
+    areas_sel = st.sidebar.multiselect("Filtrar por AREA:",      options=sorted(df_gastos_base['AREA'].unique()))
     prov_sel  = st.sidebar.multiselect("Filtrar por PROVEEDOR:", options=sorted(df_gastos_base['PROVEEDOR'].unique()))
 
     # Aplicar filtros
@@ -92,14 +91,14 @@ if df is not None:
     if areas_sel: df_gastos = df_gastos[df_gastos['AREA'].isin(areas_sel)]
     if prov_sel:  df_gastos = df_gastos[df_gastos['PROVEEDOR'].isin(prov_sel)]
 
-    # --- CÁLCULOS ---
+    # --- CALCULOS ---
     total_ing        = df_ingresos['MONTO BASE USD'].sum()
     total_neto       = df_gastos['MONTO BASE USD'].sum()          # filtrado (para filter_summary)
     total_honorarios = df_gastos['HONORARIOS'].sum()              # filtrado (para filter_summary)
     gasto_total_real = total_neto + total_honorarios              # filtrado (para filter_summary)
     saldo_caja       = total_ing - gasto_total_real               # filtrado (para filter_summary)
 
-    # Totales REALES sin filtrar — se usan en las métricas fijas de arriba y el resumen del gráfico
+    # Totales REALES sin filtrar - se usan en las metricas fijas de arriba y el resumen del grafico
     _hon_base       = df_gastos_base['HONORARIOS'].sum() if 'HONORARIOS' in df_gastos_base.columns else 0
     neto_base       = df_gastos_base['MONTO BASE USD'].sum()
     gasto_base_real = neto_base + _hon_base
@@ -114,7 +113,7 @@ if df is not None:
         unsafe_allow_html=True
     )
 
-    # --- MÉTRICAS (siempre valores reales del proyecto, sin filtrar) ---
+    # --- METRICAS (siempre valores reales del proyecto, sin filtrar) ---
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("TOTAL INGRESOS",   f"$ {total_ing:,.2f}")
     m2.metric("GASTOS NETOS",     f"$ {neto_base:,.2f}")
@@ -123,12 +122,12 @@ if df is not None:
 
     st.divider()
 
-    # ──────────────────────────────────────────────────────────
-    # FUNCIÓN UNIFICADA PARA GRÁFICOS DE BARRAS HORIZONTALES
-    # ──────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────
+    # FUNCION UNIFICADA PARA GRAFICOS DE BARRAS HORIZONTALES
+    # ─────────────────────────────────────────────────────────
     def horizontal_bar_chart(df_plot, x_col, y_col, color_scale, title, height=500):
         if df_plot.empty:
-            st.info("No hay datos para este gráfico con los filtros actuales.")
+            st.info("No hay datos para este grafico con los filtros actuales.")
             return
 
         df_sorted = df_plot.sort_values(x_col, ascending=True).copy()
@@ -169,12 +168,12 @@ if df is not None:
 
         st.plotly_chart(fig, use_container_width=True)
 
-    # ──────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────
     # TABS
-    # ──────────────────────────────────────────────────────────
-    t1, t2, t3, t4 = st.tabs(["📊 GRÁFICOS", "💸 EGRESOS", "💰 INGRESOS", "🔍 BUSCADOR"])
+    # ─────────────────────────────────────────────────────────
+    t1, t2, t3, t4 = st.tabs(["📊 GRAFICOS", "💸 EGRESOS", "💰 INGRESOS", "🔍 BUSCADOR"])
 
-    # Helper: muestra resumen de filtro debajo de cada gráfico
+    # Helper: muestra resumen de filtro debajo de cada grafico
     filtro_activo = bool(tipos_sel or areas_sel or prov_sel)
     def filter_summary(df_filtrado, label_filtro):
         if filtro_activo:
@@ -183,7 +182,7 @@ if df is not None:
             st.markdown(
                 f"""<div style='background:#e8f0fe;border-left:5px solid #1e3a8a;
                 padding:10px 16px;border-radius:6px;margin-top:4px;font-size:1rem;'>
-                🔍 <b>Filtro activo — {label_filtro}:</b> &nbsp;
+                🔍 <b>Filtro activo &mdash; {label_filtro}:</b> &nbsp;
                 {n} registro{'s' if n != 1 else ''} &nbsp;|
                 Subtotal neto: <b>$ {tot:,.2f}</b> &nbsp;|
                 + Admin. Delegada: <b>$ {total_honorarios:,.2f}</b> &nbsp;|
@@ -192,51 +191,49 @@ if df is not None:
                 unsafe_allow_html=True
             )
 
-
     with t1:
-        # ── 1. Por TIPO ──────────────────────────────────────
-        st.write("### 📌 Inversión por Tipo")
+        # 1. Por TIPO
+        st.write("### 📌 Inversion por Tipo")
         df_t = df_gastos.groupby('TIPO')['MONTO BASE USD'].sum().reset_index()
-        df_t = pd.concat([df_t, pd.DataFrame({'TIPO': ['ADMINISTRACIÓN DELEGADA'], 'MONTO BASE USD': [total_honorarios]})], ignore_index=True)
+        df_t = pd.concat([df_t, pd.DataFrame({'TIPO': ['ADMINISTRACION DELEGADA'], 'MONTO BASE USD': [total_honorarios]})], ignore_index=True)
         horizontal_bar_chart(df_t, 'MONTO BASE USD', 'TIPO', 'Viridis',
-                             '📌 Inversión total por Tipo de Gasto', height=max(350, len(df_t) * 45))
+                             '📌 Inversion total por Tipo de Gasto', height=max(350, len(df_t) * 45))
         filter_summary(df_gastos, "Tipo" + (f": {', '.join(tipos_sel)}" if tipos_sel else ""))
 
         st.divider()
 
-        # ── 2. Por ÁREA ──────────────────────────────────────
-        st.write("### 📐 Inversión por Área")
+        # 2. Por AREA
+        st.write("### 📐 Inversion por Area")
         df_a = df_gastos.groupby('AREA')['MONTO BASE USD'].sum().reset_index()
-        df_a = pd.concat([df_a, pd.DataFrame({'AREA': ['ADMINISTRACIÓN DELEGADA'], 'MONTO BASE USD': [total_honorarios]})], ignore_index=True)
+        df_a = pd.concat([df_a, pd.DataFrame({'AREA': ['ADMINISTRACION DELEGADA'], 'MONTO BASE USD': [total_honorarios]})], ignore_index=True)
         horizontal_bar_chart(df_a, 'MONTO BASE USD', 'AREA', 'Blues',
-                             '📐 Inversión total por Área de Obra', height=max(400, len(df_a) * 42))
-        filter_summary(df_gastos, "Área" + (f": {', '.join(areas_sel)}" if areas_sel else ""))
+                             '📐 Inversion total por Area de Obra', height=max(400, len(df_a) * 42))
+        filter_summary(df_gastos, "Area" + (f": {', '.join(areas_sel)}" if areas_sel else ""))
 
         st.divider()
 
-        # ── 3. Top Proveedores ────────────────────────────────
+        # 3. Top Proveedores
         st.write("### 👥 Top Proveedores")
         df_p = (df_gastos.groupby('PROVEEDOR')['MONTO BASE USD']
                 .sum().sort_values(ascending=False).head(20).reset_index())
-        df_p = pd.concat([df_p, pd.DataFrame({'PROVEEDOR': ['ADMINISTRACIÓN DELEGADA'], 'MONTO BASE USD': [total_honorarios]})], ignore_index=True)
+        df_p = pd.concat([df_p, pd.DataFrame({'PROVEEDOR': ['ADMINISTRACION DELEGADA'], 'MONTO BASE USD': [total_honorarios]})], ignore_index=True)
         horizontal_bar_chart(df_p, 'MONTO BASE USD', 'PROVEEDOR', 'Reds',
                              '👥 Top 20 Proveedores por Gasto', height=max(500, len(df_p) * 40))
         filter_summary(df_gastos, "Proveedor" + (f": {', '.join(prov_sel)}" if prov_sel else ""))
 
         st.divider()
 
-        # ── 4. Evolución acumulativa en el Tiempo ─────────────
-        st.write("### 📅 Evolución Acumulativa de Gastos e Ingresos")
+        # 4. Evolucion acumulativa en el Tiempo
+        st.write("### 📅 Evolucion Acumulativa de Gastos e Ingresos")
 
         freq_sel = st.radio(
-            "Agrupación:",
+            "Agrupacion:",
             options=["📅 Mensual", "🗓️ Semanal"],
             horizontal=True,
             key="freq_time"
         )
         freq_code = "ME" if freq_sel == "📅 Mensual" else "W"
 
-        # Rango: desde primer ingreso hasta hoy
         fecha_inicio = df_ingresos['FECHA'].min() if not df_ingresos.empty else df_gastos_base['FECHA'].min()
         fecha_hoy    = pd.Timestamp.today().normalize()
         idx_full     = pd.date_range(start=fecha_inicio, end=fecha_hoy, freq=freq_code)
@@ -283,7 +280,6 @@ if df is not None:
                 hovertemplate='<b>%{x|%d/%m/%Y}</b><br>Gastos: $ %{y:,.2f}<extra></extra>',
             ))
 
-            # Línea vertical "hoy"
             hoy_str = fecha_hoy.strftime('%Y-%m-%d')
             fig_time.add_shape(
                 type='line', x0=hoy_str, x1=hoy_str, y0=0, y1=1,
@@ -316,7 +312,7 @@ if df is not None:
             )
             st.plotly_chart(fig_time, use_container_width=True)
 
-            # Mini resumen debajo del gráfico — 4 columnas, siempre sin filtrar
+            # Mini resumen debajo del grafico - 4 columnas, siempre sin filtrar
             color_sal_base = "🟢" if saldo_base_real >= 0 else "🔴"
             b1, b2, b3, b4 = st.columns(4)
             b1.metric("Ingresos Totales",   f"$ {total_ing:,.2f}")
@@ -324,8 +320,8 @@ if df is not None:
             b3.metric("Admin. Delegada",    f"$ {_hon_base:,.2f}")
             b4.metric(f"{color_sal_base} Saldo Real", f"$ {saldo_base_real:,.2f}")
             if filtro_activo:
-                st.caption("⚠️ Valores del proyecto completo (sin filtros). "
-                           "El detalle filtrado se muestra debajo de cada gráfico.")
+                st.caption("Valores del proyecto completo (sin filtros). "
+                           "El detalle filtrado se muestra debajo de cada grafico.")
 
     with t2:
         st.subheader("📝 Detalle de Gastos")
@@ -347,19 +343,22 @@ if df is not None:
         )
 
     with t4:
-        st.subheader("🔍 Buscador")
-        q = st.text_input("Escriba una palabra exacta para buscar en todos los campos:")
+        st.subheader("🔍 Buscador por Descripcion")
+        q = st.text_input("Escriba una palabra exacta para buscar en la columna DESCRIPCION:")
         if q:
             import re
-            # Búsqueda por palabra exacta con límites de palabra (\b)
-            # Así 'Bar' no coincide con 'Barbiquiu'
-            pattern = r'\b' + re.escape(q) + r'\b'
-            mask = df.apply(
-                lambda r: r.astype(str).str.contains(pattern, case=False, regex=True).any(), axis=1
-            )
-            res = df[mask]
-            st.success(f"🔍 **{len(res)}** registro{'s' if len(res) != 1 else ''} encontrado{'s' if len(res) != 1 else ''} "
-                       f"con la palabra exacta **‘{q}’** | Total: **$ {res['MONTO BASE USD'].sum():,.2f}**")
-            fmt_res = {c: "${:,.2f}" for c in ['MONTO BASE USD', 'COSTO TOTAL', 'HONORARIOS'] if c in res.columns}
-            fmt_res.update({c: "{:,.2f}" for c in ['MONTO ORIG', 'TASA'] if c in res.columns})
-            st.dataframe(res.style.format(fmt_res), use_container_width=True)
+            if 'DESCRIPCION' not in df.columns:
+                st.warning("La columna DESCRIPCION no existe en el CSV.")
+            else:
+                # Mas flexible: Cabilla encuentra Cabillas
+                pattern = re.escape(q)
+                mask = df['DESCRIPCION'].astype(str).str.contains(pattern, case=False, regex=True)
+                res  = df[mask]
+                st.success(
+                    f"🔍 **{len(res)}** registro{'s' if len(res) != 1 else ''} encontrado{'s' if len(res) != 1 else ''} "
+                    f"que contiene '{q}' en DESCRIPCION | Total: **$ {res['MONTO BASE USD'].sum():,.2f}**"
+                )
+                fmt_res = {c: "${:,.2f}" for c in ['MONTO BASE USD', 'COSTO TOTAL', 'HONORARIOS'] if c in res.columns}
+                fmt_res.update({c: "{:,.2f}" for c in ['MONTO ORIG', 'TASA'] if c in res.columns})
+                st.dataframe(res.style.format(fmt_res), use_container_width=True)
+
