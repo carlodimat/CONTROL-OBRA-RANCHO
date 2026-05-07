@@ -30,47 +30,34 @@ st.markdown("""
 
 # Funcion para envolver texto en ejes
 def wrap_label(text, width=18):
-    """Divide etiquetas largas en multiples lineas para los ejes de Plotly."""
-    if not isinstance(text, str):
-        return str(text)
+    if not isinstance(text, str): return str(text)
     words = text.split()
     lines, current = [], []
     for word in words:
         if sum(len(w) for w in current) + len(current) + len(word) > width:
-            if current:
-                lines.append(" ".join(current))
+            if current: lines.append(" ".join(current))
             current = [word]
-        else:
-            current.append(word)
-    if current:
-        lines.append(" ".join(current))
+        else: current.append(word)
+    if current: lines.append(" ".join(current))
     return "<br>".join(lines)
 
 def create_pdf(df_report, title_report, totals_info=""):
-    """Genera un buffer de PDF a partir de un DataFrame."""
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
-    
-    # Encabezado
     pdf.cell(190, 10, title_report, ln=True, align='C')
     pdf.set_font("Arial", "", 10)
     pdf.cell(190, 10, f"Generado el: {pd.Timestamp.today().strftime('%d/%m/%Y %H:%M')}", ln=True, align='C')
-    
     if totals_info:
         pdf.set_font("Arial", "B", 10)
         pdf.multi_cell(190, 10, totals_info)
         pdf.ln(5)
-
-    # Tabla
     pdf.set_font("Arial", "B", 8)
     cols = [c for c in ['FECHA', 'PROVEEDOR', 'DESCRIPCION', 'MONTO ORIG', 'HONORARIOS', 'COSTO TOTAL'] if c in df_report.columns]
     widths = [20, 35, 65, 25, 20, 25]
-    
     for i, col in enumerate(cols):
         pdf.cell(widths[i], 8, col, border=1, align='C')
     pdf.ln()
-    
     pdf.set_font("Arial", "", 7)
     for _, row in df_report.iterrows():
         for i, col in enumerate(cols):
@@ -106,7 +93,6 @@ df = load_all_data()
 if df is not None:
     empresa = df['EMPRESA'].iloc[0] if 'EMPRESA' in df.columns else "DIMAQUINAS C.A."
     obra = df['OBRA'].iloc[0] if 'OBRA' in df.columns else "RANCHO FLAMBOYANT"
-    
     df_gastos_base = df[df['CLASE'] == 'GASTO'].copy()
     df_ingresos = df[df['CLASE'] == 'INGRESO'].copy()
 
@@ -162,24 +148,45 @@ if df is not None:
         horizontal_bar_chart(df_t, 'MONTO BASE USD', 'TIPO', 'Viridis', 'Inversion por Tipo', height=max(350, len(df_t)*45))
         filter_summary(df_gastos, "Tipo")
         st.divider()
-        st.write("### 📐 Evolucion Acumulativa")
-        # (Grafico de tiempo simplificado para brevedad, sigue igual en el archivo real)
+        
+        st.write("### 📅 Evolucion Acumulativa")
+        freq_sel = st.radio("Agrupacion:", options=["📅 Mensual", "🗓️ Semanal"], horizontal=True, key="freq_time")
+        freq_code = "ME" if freq_sel == "📅 Mensual" else "W"
+        fecha_inicio = df_ingresos['FECHA'].min() if not df_ingresos.empty else df_gastos_base['FECHA'].min()
+        fecha_hoy = pd.Timestamp.today().normalize()
+        idx_full = pd.date_range(start=fecha_inicio, end=fecha_hoy, freq=freq_code)
+
+        if not df_gastos.empty:
+            df_gastos_chart = df_gastos.copy()
+            df_gastos_chart['_GASTO_REAL'] = df_gastos_chart['MONTO BASE USD'] + df_gastos_chart['HONORARIOS']
+            s_gastos = (df_gastos_chart.set_index('FECHA')['_GASTO_REAL'].resample(freq_code).sum().reindex(idx_full, fill_value=0).cumsum())
+            s_ingresos = (df_ingresos.set_index('FECHA')['MONTO BASE USD'].resample(freq_code).sum().reindex(idx_full, fill_value=0).cumsum())
+            df_evol = pd.DataFrame({'FECHA': idx_full, 'GASTOS': s_gastos.values, 'INGRESOS': s_ingresos.values})
+            
+            fig_time = go.Figure()
+            fig_time.add_trace(go.Scatter(x=df_evol['FECHA'], y=df_evol['INGRESOS'], name='Ingresos Acum.', fill='tozeroy', line=dict(color='#22c55e')))
+            fig_time.add_trace(go.Scatter(x=df_evol['FECHA'], y=df_evol['GASTOS'], name='Gastos Acum.', fill='tozeroy', line=dict(color='#1e3a8a')))
+            fig_time.update_layout(height=420, hovermode='x unified', margin=dict(l=10, r=20, t=40, b=30))
+            st.plotly_chart(fig_time, use_container_width=True)
+
+            b1, b2, b3, b4 = st.columns(4)
+            b1.metric("Ingresos Totales", f"$ {total_ing:,.2f}")
+            b2.metric("Gastos Netos", f"$ {neto_base:,.2f}")
+            b3.metric("Admin. Delegada", f"$ {_hon_base:,.2f}")
+            b4.metric("Saldo Real", f"$ {saldo_base_real:,.2f}")
 
     with t2:
         st.subheader("📝 Detalle de Gastos")
         st.info(f"📋 **{len(df_gastos)}** movimientos - Total Neto: **$ {total_neto:,.2f}**")
         cols_show = [c for c in ['FECHA', 'TIPO', 'AREA', 'PROVEEDOR', 'DESCRIPCION', 'MONTO ORIG', '% ADMIN', 'HONORARIOS', 'COSTO TOTAL'] if c in df_gastos.columns]
         st.dataframe(df_gastos[cols_show].sort_values('FECHA', ascending=False).style.format({c: "${:,.2f}" for c in ['HONORARIOS', 'COSTO TOTAL']}), use_container_width=True)
-        
-        summary_text = f"Total Neto: $ {total_neto:,.2f} | Admin: $ {total_honorarios:,.2f} | Total Real: $ {gasto_total_real:,.2f}"
-        pdf_data = create_pdf(df_gastos.sort_values('FECHA', ascending=False), f"REPORTE DE EGRESOS - {obra}", summary_text)
+        pdf_data = create_pdf(df_gastos.sort_values('FECHA', ascending=False), f"REPORTE DE EGRESOS - {obra}", f"Total Real: $ {gasto_total_real:,.2f}")
         st.download_button(label="📄 Descargar Egresos en PDF", data=pdf_data, file_name=f"Egresos_{obra}.pdf", mime="application/pdf")
 
     with t3:
         st.subheader("💰 Detalle de Ingresos")
         st.success(f"💵 **{len(df_ingresos)}** ingresos - Total: **$ {total_ing:,.2f}**")
         st.dataframe(df_ingresos[['FECHA', 'PROVEEDOR', 'MONTO BASE USD']].sort_values('FECHA', ascending=False).style.format({"MONTO BASE USD": "${:,.2f}"}), use_container_width=True)
-        
         pdf_ing = create_pdf(df_ingresos.sort_values('FECHA', ascending=False), f"REPORTE DE INGRESOS - {obra}", f"Total Ingresos: $ {total_ing:,.2f}")
         st.download_button(label="📄 Descargar Ingresos en PDF", data=pdf_ing, file_name=f"Ingresos_{obra}.pdf", mime="application/pdf")
 
