@@ -190,6 +190,26 @@ if df is not None:
 
         st.divider()
 
+        # ── 2. Por ÁREA ──────────────────────────────────────
+        st.write("### 📐 Inversión por Área")
+        df_a = df_gastos.groupby('AREA')['MONTO BASE USD'].sum().reset_index()
+        df_a = pd.concat([df_a, pd.DataFrame({'AREA': ['ADMINISTRACIÓN DELEGADA'], 'MONTO BASE USD': [total_honorarios]})], ignore_index=True)
+        horizontal_bar_chart(df_a, 'MONTO BASE USD', 'AREA', 'Blues', '📐 Inversión total por Área de Obra', height=max(400, len(df_a) * 42))
+        filter_summary(df_gastos, "Área")
+
+        st.divider()
+
+        # ── 3. Top Proveedores ────────────────────────────────
+        st.write("### 👥 Top Proveedores")
+        df_p = (df_gastos.groupby('PROVEEDOR')['MONTO BASE USD']
+                .sum().sort_values(ascending=False).head(20).reset_index())
+        df_p = pd.concat([df_p, pd.DataFrame({'PROVEEDOR': ['ADMINISTRACIÓN DELEGADA'], 'MONTO BASE USD': [total_honorarios]})], ignore_index=True)
+        horizontal_bar_chart(df_p, 'MONTO BASE USD', 'PROVEEDOR', 'Reds', '👥 Top 20 Proveedores por Gasto', height=max(500, len(df_p) * 40))
+        filter_summary(df_gastos, "Proveedor")
+
+        st.divider()
+
+        # ── 4. Evolución acumulativa ─────────────
         st.write("### 📅 Evolución Acumulativa")
         freq_sel = st.radio("Agrupación:", options=["📅 Mensual", "🗓️ Semanal"], horizontal=True, key="freq_time")
         freq_code = "ME" if freq_sel == "📅 Mensual" else "W"
@@ -217,6 +237,16 @@ if df is not None:
             
             fig_time.update_layout(height=420, hovermode='x unified', margin=dict(l=10, r=20, t=40, b=30), plot_bgcolor='#f8fafc', paper_bgcolor='#ffffff')
             st.plotly_chart(fig_time, use_container_width=True)
+
+            # Mini resumen debajo del gráfico
+            color_sal_base = "🟢" if saldo_base_real >= 0 else "🔴"
+            b1, b2, b3, b4 = st.columns(4)
+            b1.metric("Ingresos Totales",   f"$ {total_ing:,.2f}")
+            b2.metric("Gastos Netos",       f"$ {neto_base:,.2f}")
+            b3.metric("Admin. Delegada",    f"$ {_hon_base:,.2f}")
+            b4.metric(f"{color_sal_base} Saldo Real", f"$ {saldo_base_real:,.2f}")
+            if filtro_activo:
+                st.caption("⚠️ Valores del proyecto completo (sin filtros).")
 
     with t2:
         st.subheader("📝 Detalle de Gastos")
